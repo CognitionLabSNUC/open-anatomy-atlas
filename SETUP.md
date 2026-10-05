@@ -51,8 +51,6 @@ Done: 3210 meshes, ... named structures, ... triangles.
 The app now shows: bp3d43
 ```
 
-![Terminal after fetch-data finishes](docs/screenshots/setup-fetch-data.png)
-
 The last atlas you install is the one that is shown. To see what is installed, or switch, run:
 
 ```bash
