@@ -1,0 +1,74 @@
+{
+  "name": "open-anatomy-atlas",
+  "version": "0.0.1",
+  "description": "Open-source 3D human anatomy atlas for teaching and learning, built on the BodyParts3D and Z-Anatomy open datasets",
+  "main": "src/main/main.js",
+  "author": {
+    "name": "Cognition Lab, Shiv Nadar University Chennai",
+    "email": "research.cognition@snuchennai.edu.in",
+    "url": "https://www.snuchennai.edu.in/cognitionlab/"
+  },
+  "license": "MIT",
+  "keywords": [
+    "anatomy",
+    "3d",
+    "education",
+    "medical",
+    "bodyparts3d",
+    "fma",
+    "electron",
+    "z-anatomy"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "electron .",
+    "start:nosandbox": "electron . --no-sandbox",
+    "fetch-data": "node tools/fetch-data.js",
+    "fetch-data:core": "node tools/fetch-data.js --core",
+    "fetch-data:43": "node tools/fetch-data.js --source bp3d43",
+    "fetch-data:zanatomy": "node tools/fetch-data.js --source zanatomy",
+    "atlases": "node tools/fetch-data.js --list",
+    "web": "node tools/serve.js",
+    "sample-data": "node tools/make-sample-data.js sample-data",
+    "test": "node test/run-tests.js",
+    "dist": "electron-builder --linux AppImage deb",
+    "dist:appimage": "electron-builder --linux AppImage",
+    "build-site": "node tools/build-site.js",
+    "set-github": "node tools/set-github.js"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "org.openanatomyatlas.app",
+    "productName": "Open Anatomy Atlas",
+    "executableName": "open-anatomy-atlas",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "build/icon.png",
+      "package.json",
+      "LICENSE",
+      "NOTICE.md"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Education",
+      "icon": "build/icon.png",
+      "synopsis": "3D human anatomy atlas",
+      "description": "Explore, label, section and quiz yourself on the whole human body using open anatomical data (BodyParts3D, Z-Anatomy)."
+    },
+    "deb": {
+      "maintainer": "Cognition Lab <research.cognition@snuchennai.edu.in>"
+    },
+    "artifactName": "open-anatomy-atlas-${version}-${arch}.${ext}"
+  }
+}

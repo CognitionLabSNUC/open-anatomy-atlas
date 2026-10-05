@@ -1,0 +1,37 @@
+# Push a tag such as v0.0.1 to build the Linux installers and attach them to a GitHub release.
+#   git tag v0.0.1 && git push origin v0.0.1
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm test
+
+      - run: npm install
+
+      - name: Build .deb and AppImage
+        run: npx electron-builder --linux AppImage deb --publish never
+
+      - name: Create release and attach installers
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true            # review the notes, then click "Publish release"
+          generate_release_notes: true
+          body_path: .github/RELEASE_NOTES.md
+          files: |
+            dist/*.AppImage
+            dist/*.deb

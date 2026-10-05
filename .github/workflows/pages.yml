@@ -1,0 +1,78 @@
+# Builds the atlases on GitHub's servers and publishes the app to GitHub Pages.
+# Enable once: Settings > Pages > Build and deployment > Source: "GitHub Actions".
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  # Which atlases to publish (comma-separated: bp3d43, bp3d40, zanatomy).
+  # Override without editing this file: Settings > Secrets and variables > Actions > Variables.
+  SITE_ATLASES: ${{ vars.SITE_ATLASES || 'bp3d43,zanatomy' }}
+  SITE_DEFAULT: ${{ vars.SITE_DEFAULT || 'bp3d43' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run tests
+        run: npm test
+
+      # Downloads are cached between runs, so the slow BodyParts3D 4.3 download happens once.
+      - name: Restore downloaded anatomy data
+        uses: actions/cache@v4
+        with:
+          path: ~/.config/open-anatomy-atlas/dataset/atlases/*/raw
+          key: anatomy-raw-v1-${{ hashFiles('src/data/pipeline.js', 'src/data/zanatomy.js', 'src/data/bp3d43.js') }}
+          restore-keys: anatomy-raw-v1-
+
+      - name: Build atlases
+        run: |
+          for id in ${SITE_ATLASES//,/ }; do
+            case "$id" in
+              # Commercial-safe Z-Anatomy (CC BY-SA 4.0) so the public site carries no non-commercial parts.
+              zanatomy) node tools/fetch-data.js --source zanatomy --commercial-safe || echo "::warning::Z-Anatomy build failed" ;;
+              bp3d43)   node tools/fetch-data.js --source bp3d43 || echo "::warning::BodyParts3D 4.3 build failed" ;;
+              bp3d40)   node tools/fetch-data.js --source bp3d40 || echo "::warning::BodyParts3D 4.0 build failed" ;;
+            esac
+          done
+          node tools/fetch-data.js --list
+
+      - name: Build static site
+        run: node tools/build-site.js --out site --atlases "$SITE_ATLASES" --default "$SITE_DEFAULT" --skip-missing
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

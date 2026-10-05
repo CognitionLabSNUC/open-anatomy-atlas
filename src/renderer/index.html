@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://upload.wikimedia.org; connect-src 'self' atlas: https://en.wikipedia.org">
+<title>Open Anatomy Atlas</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="7" r="4.5"/><path d="M16 12v9M10 14.5l6 2 6-2M12 29l4-8 4 8"/></svg>
+      <span>Open Anatomy Atlas</span>
+    </div>
+
+    <div class="search" role="search">
+      <input id="search" type="search" placeholder="Find a structure (press /)" autocomplete="off" spellcheck="false" aria-label="Find a structure" aria-controls="searchResults" aria-expanded="false">
+      <ul id="searchResults" class="search-results" role="listbox" hidden></ul>
+    </div>
+
+    <div class="seg" role="tablist" aria-label="Mode">
+      <button id="modeExplore" role="tab" aria-selected="true" class="on">Explore</button>
+      <button id="modeQuiz" role="tab" aria-selected="false">Quiz</button>
+    </div>
+
+    <div class="tools">
+      <div class="seg small" aria-label="Viewpoint">
+        <button data-view="front" title="Front view (1)">Front</button>
+        <button data-view="back" title="Back view (2)">Back</button>
+        <button data-view="left" title="Patient's left side (3)">Left</button>
+        <button data-view="right" title="Patient's right side (4)">Right</button>
+      </div>
+      <button id="btnReset" class="icon-btn" title="Show everything and reset the view (A)">Reset</button>
+      <button id="btnXray" class="icon-btn" aria-pressed="false" title="X-ray: see through everything except the selection (X)">X-ray</button>
+      <button id="btnShot" class="icon-btn" title="Save a picture of the current view">Save image</button>
+      <button id="btnData" class="icon-btn" title="Atlas data">Atlas data</button>
+      <button id="btnAbout" class="icon-btn" title="About this atlas and who made it">About</button>
+      <button id="btnHelp" class="icon-btn" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <nav class="tabs" role="tablist">
+      <button class="tab on" data-tab="layers" role="tab">Layers</button>
+      <button class="tab" data-tab="tree" role="tab">Structures</button>
+      <button class="tab" data-tab="sections" role="tab">Sections</button>
+    </nav>
+
+    <section class="pane" data-pane="layers">
+      <ul id="layerList" class="layer-list"></ul>
+      <div class="pane-foot">
+        <label class="check" id="mirrorToggleRow" hidden><input id="mirrorToggle" type="checkbox" class="toggle" checked> Show mirrored copies</label>
+        <p id="hiddenNote" class="note"></p>
+        <button id="btnShowHidden" class="text-btn" hidden>Show hidden structures</button>
+      </div>
+    </section>
+
+    <section class="pane" data-pane="tree" hidden>
+      <div class="seg full" role="tablist" aria-label="Organise structures">
+        <button data-tree="partof" class="on">By region</button>
+        <button data-tree="isa">By type</button>
+      </div>
+      <ul id="tree" class="tree" role="tree"></ul>
+    </section>
+
+    <section class="pane" data-pane="sections" hidden>
+      <p class="note">Cut the body with a plane to study cross-sections, the way CT and MRI slices show it.</p>
+      <div class="radio-col" role="radiogroup" aria-label="Section plane">
+        <label><input type="radio" name="plane" value="none" checked> No cut</label>
+        <label><input type="radio" name="plane" value="axial"> Axial (transverse)</label>
+        <label><input type="radio" name="plane" value="coronal"> Coronal (front / back)</label>
+        <label><input type="radio" name="plane" value="sagittal"> Sagittal (left / right)</label>
+      </div>
+      <label class="slider-label" for="planePos">Position</label>
+      <input id="planePos" type="range" min="0" max="1000" value="500" disabled>
+      <label class="check"><input id="planeFlip" type="checkbox" disabled> Keep the other side</label>
+    </section>
+  </aside>
+
+  <main class="stage">
+    <canvas id="viewport" tabindex="0" aria-label="3D anatomy view. Drag to rotate, right-drag to pan, scroll to zoom, click to identify."></canvas>
+    <div id="pin" class="pin" hidden><span></span></div>
+    <div id="hoverTip" class="hover-tip" hidden></div>
+    <div id="loading" class="loading"><span id="loadingText">Loading atlas</span><div class="bar"><div id="loadingBar"></div></div></div>
+    <p class="stage-hint">Drag to rotate, right-drag or shift-drag to pan, scroll to zoom, click to identify, double-click to focus</p>
+  </main>
+
+  <aside class="inspector">
+    <div id="inspectEmpty" class="empty">
+      <h2>Click any structure to identify it</h2>
+      <p>Or search for one by name. Use Layers to peel the body back, and Sections to slice it.</p>
+    </div>
+
+    <article id="tag" class="tag" hidden>
+      <div class="tag-hole" aria-hidden="true"></div>
+      <h2 id="tagName"></h2>
+      <p id="tagLatin" class="tag-latin" hidden></p>
+      <p id="tagId" class="tag-id"></p>
+      <p id="tagNote" class="tag-note" hidden></p>
+      <p class="tag-cat"><span id="tagSwatch" class="swatch"></span><span id="tagCat"></span><span id="tagCount"></span></p>
+      <ol id="tagPath" class="tag-path" aria-label="Location in the body"></ol>
+      <div class="tag-actions">
+        <button id="actFocus" title="Zoom to it (F)">Focus</button>
+        <button id="actIsolate" title="Hide everything else (I)">Isolate</button>
+        <button id="actHide" title="Hide it (H)">Hide</button>
+      </div>
+    </article>
+
+    <section id="wiki" class="wiki" hidden>
+      <img id="wikiImg" alt="" hidden>
+      <p id="wikiText"></p>
+      <a id="wikiLink" href="#" target="_blank" rel="noopener">Read more on Wikipedia</a>
+      <p id="wikiSource" class="note"></p>
+    </section>
+
+    <section id="quiz" class="quiz" hidden>
+      <div id="quizSetup">
+        <h2>Test yourself</h2>
+        <p class="note">Questions come from the structures currently visible, so use Layers or Isolate to choose a region first.</p>
+        <div class="radio-col" role="radiogroup" aria-label="Question type">
+          <label><input type="radio" name="qtype" value="find" checked> Find it: click the named structure</label>
+          <label><input type="radio" name="qtype" value="name"> Name it: pick the name of the highlighted structure</label>
+        </div>
+        <label class="slider-label" for="qcount">Questions</label>
+        <select id="qcount"><option>10</option><option selected>20</option><option>40</option></select>
+        <button id="quizStart" class="primary">Start quiz</button>
+        <p id="quizSetupMsg" class="note warn"></p>
+      </div>
+      <div id="quizRun" hidden>
+        <p id="quizProgress" class="quiz-progress"></p>
+        <h2 id="quizPrompt"></h2>
+        <div id="quizOptions" class="quiz-options"></div>
+        <p id="quizFeedback" class="quiz-feedback" aria-live="polite"></p>
+        <div class="quiz-row">
+          <button id="quizNext" class="primary" hidden>Next question</button>
+          <button id="quizSkip">Skip</button>
+          <button id="quizStop">End quiz</button>
+        </div>
+      </div>
+      <div id="quizDone" hidden>
+        <h2 id="quizScore"></h2>
+        <p class="note">Structures to review (click one to study it):</p>
+        <ul id="quizMissed" class="missed"></ul>
+        <button id="quizAgain" class="primary">Try again</button>
+      </div>
+    </section>
+  </aside>
+
+  <footer class="statusbar">
+    <span id="statusData"></span>
+    <button id="statusGet" class="text-btn" hidden>Get the full anatomical atlas</button>
+    <span id="statusAttr" class="attr"></span>
+    <button id="statusLab" class="text-btn lab-credit" title="About"></button>
+  </footer>
+</div>
+
+<dialog id="dataDialog">
+  <form method="dialog" class="dialog-body">
+    <h2>Anatomical data</h2>
+    <p class="note" id="dataLead">You can install more than one atlas and switch between them. Each one is downloaded once and then works offline.</p>
+    <ul id="atlasList" class="atlas-list"></ul>
+    <label class="check" id="optMirrorRow"><input id="optMirror" type="checkbox" checked> When building, add mirrored copies of muscles that exist on one side only</label>
+    <label class="check" id="optCommercialRow"><input id="optCommercial" type="checkbox"> Z-Anatomy: commercial-safe build (leaves out the non-commercial inner ear and kidney models)</label>
+    <div id="dlProgress" class="progress" hidden>
+      <div class="bar"><div id="dlBar"></div></div>
+      <p id="dlMsg"></p>
+    </div>
+    <p id="dlError" class="note warn"></p>
+    <div class="dialog-foot">
+      <button type="button" id="dlImport" class="text-btn">Build BodyParts3D from files I already have</button>
+      <button type="button" id="dlFolder" class="text-btn">Open data folder</button>
+    </div>
+    <div class="dialog-close"><button value="close" id="dataClose">Close</button></div>
+  </form>
+</dialog>
+
+<dialog id="aboutDialog" class="about">
+  <form method="dialog" class="dialog-body">
+    <img id="aboutLogo" class="about-logo" alt="">
+    <h2 id="aboutTitle">Open Anatomy Atlas</h2>
+    <p id="aboutText"></p>
+    <dl class="about-contact">
+      <dt>Website</dt><dd><a id="aboutWeb" target="_blank" rel="noopener"></a></dd>
+      <dt>Email</dt><dd><a id="aboutEmail"></a></dd>
+      <dt>Source code</dt><dd><a id="aboutRepo" target="_blank" rel="noopener"></a></dd>
+      <dt>Version</dt><dd id="aboutVersion"></dd>
+    </dl>
+    <h3>Anatomical data</h3>
+    <p class="note" id="aboutData"></p>
+    <p class="note">The application is open source under the MIT licence. Each atlas keeps its own licence and attribution, listed in NOTICE.md. This atlas is a teaching aid, not a clinical reference.</p>
+    <div class="dialog-close"><button value="close">Close</button></div>
+  </form>
+</dialog>
+
+<dialog id="helpDialog">
+  <form method="dialog" class="dialog-body">
+    <h2>Keyboard shortcuts</h2>
+    <dl class="keys">
+      <dt>/</dt><dd>Find a structure</dd>
+      <dt>F</dt><dd>Focus the selection</dd>
+      <dt>I</dt><dd>Isolate the selection</dd>
+      <dt>H</dt><dd>Hide the selection</dd>
+      <dt>A</dt><dd>Show everything, reset view</dd>
+      <dt>X</dt><dd>Toggle X-ray</dd>
+      <dt>1 2 3 4</dt><dd>Front, back, left, right views</dd>
+      <dt>Esc</dt><dd>Clear the selection</dd>
+    </dl>
+    <div class="dialog-close"><button value="close">Close</button></div>
+  </form>
+</dialog>
+
+<script src="brand.js"></script>
+<script src="mat4.js"></script>
+<script src="geometry.js"></script>
+<script src="bodyModel.js"></script>
+<script src="procedural.js"></script>
+<script src="atlas.js"></script>
+<script src="wiki.js"></script>
+<script src="gl.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

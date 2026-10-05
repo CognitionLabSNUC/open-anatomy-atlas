@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below, together with the anatomical data source you used (see NOTICE.md)."
+title: "Open Anatomy Atlas"
+version: 0.0.1
+date-released: 2026-10-05
+license: MIT
+type: software
+authors:
+  - name: "Cognition Lab, Shiv Nadar University Chennai"
+    email: "research.cognition@snuchennai.edu.in"
+    website: "https://www.snuchennai.edu.in/cognitionlab/"
+  # Add individual lab members, e.g.
+  # - family-names: "Lastname"
+  #   given-names: "Firstname"
+  #   affiliation: "Cognition Lab, Shiv Nadar University Chennai"
+repository-code: "https://github.com/CognitionLabSNUC/open-anatomy-atlas"
+references:
+  - type: article
+    title: "BodyParts3D: 3D structure database for anatomical concepts"
+    authors:
+      - family-names: "Mitsuhashi"
+        given-names: "N."
+    journal: "Nucleic Acids Research"
+    volume: 37
+    year: 2009
+    start: "D782"
+    end: "D785"
+  - type: software
+    title: "Z-Anatomy: the open source atlas of anatomy"
+    authors:
+      - name: "Z-Anatomy"
+    url: "https://www.z-anatomy.com/"
